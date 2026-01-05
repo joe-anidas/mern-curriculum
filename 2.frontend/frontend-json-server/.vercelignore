@@ -1,0 +1,7 @@
+.git
+.gitignore
+.env.local
+.env.*.local
+db.json
+README.md
+

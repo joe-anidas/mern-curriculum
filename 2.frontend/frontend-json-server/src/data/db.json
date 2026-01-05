@@ -1,0 +1,45 @@
+{
+  "users": [
+    {
+      "id": "test@example.com",
+      "name": "Test User",
+      "email": "test@example.com",
+      "password": "password123"
+    },
+    {
+      "id": "joeben2211@gmail.com",
+      "name": "Joe Anidas",
+      "email": "joeben2211@gmail.com",
+      "password": "123456"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "3a12",
+      "userId": "test@example.com",
+      "title": "Typescript basics",
+      "description": "Learn the typescript concepts in curriculum..",
+      "status": "completed",
+      "createdAt": "2025-12-29T04:01:39.535Z",
+      "updatedAt": "2025-12-30T08:06:10.424Z"
+    },
+    {
+      "id": "1fc1",
+      "userId": "test@example.com",
+      "title": "Frontend React with Typescript",
+      "description": "Learn the React basics and fundamentals.",
+      "status": "in-progress",
+      "createdAt": "2025-12-29T04:02:23.585Z",
+      "updatedAt": "2025-12-29T04:02:23.585Z"
+    },
+    {
+      "id": "822a",
+      "userId": "test@example.com",
+      "title": "Backend + MongoDB",
+      "description": "Learn the backend Node and Express fundamentals and MongoDB basics.",
+      "status": "todo",
+      "createdAt": "2025-12-29T04:03:38.570Z",
+      "updatedAt": "2025-12-29T04:03:38.570Z"
+    }
+  ]
+}
