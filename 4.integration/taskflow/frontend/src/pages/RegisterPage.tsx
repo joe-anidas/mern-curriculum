@@ -84,6 +84,10 @@ export const RegisterPage = () => {
                     value: 2,
                     message: "Name must be at least 2 characters",
                   },
+                  maxLength: {
+                    value: 50,
+                    message: "Name cannot exceed 50 characters",
+                  },
                 })}
                 id="name"
                 type="text"

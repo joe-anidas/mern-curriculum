@@ -7,57 +7,73 @@ interface TaskListProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  page?: number;
+  totalPages?: number;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
+  taskCounts?: {
+    all: number;
+    todo: number;
+    "in-progress": number;
+    completed: number;
+  };
+  status?: "all" | TaskStatus;
+  onStatusChange?: (status: "all" | TaskStatus) => void;
 }
 
-export const TaskList = ({ tasks, onEdit, onDelete }: TaskListProps) => {
-  const [filter, setFilter] = useState<TaskStatus | "all">("all");
-
+export const TaskList = ({
+  tasks,
+  onEdit,
+  onDelete,
+  page = 1,
+  totalPages = 1,
+  onPrevPage,
+  onNextPage,
+  taskCounts: passedTaskCounts,
+  status = "all",
+  onStatusChange,
+}: TaskListProps) => {
   const taskCounts = useMemo(
-    () => ({
-      all: tasks.length,
-      todo: tasks.filter((t) => t.status === "todo").length,
-      "in-progress": tasks.filter((t) => t.status === "in-progress").length,
-      completed: tasks.filter((t) => t.status === "completed").length,
-    }),
-    [tasks]
-  );
-
-  const filteredTasks = useMemo(
     () =>
-      filter === "all" ? tasks : tasks.filter((task) => task.status === filter),
-    [tasks, filter]
+      passedTaskCounts || {
+        all: tasks.length,
+        todo: tasks.filter((t) => t.status === "todo").length,
+        "in-progress": tasks.filter((t) => t.status === "in-progress").length,
+        completed: tasks.filter((t) => t.status === "completed").length,
+      },
+    [tasks, passedTaskCounts]
   );
 
   return (
     <div>
       <div className="flex flex-wrap gap-2 mb-6">
         <Button
-          variant={filter === "all" ? "default" : "outline"}
-          onClick={() => setFilter("all")}
+          variant={status === "all" ? "default" : "outline"}
+          onClick={() => onStatusChange?.("all")}
         >
           All ({taskCounts.all})
         </Button>
         <Button
-          variant={filter === "todo" ? "default" : "outline"}
-          onClick={() => setFilter("todo")}
+          variant={status === "todo" ? "default" : "outline"}
+          onClick={() => onStatusChange?.("todo")}
         >
           To Do ({taskCounts.todo})
         </Button>
         <Button
-          variant={filter === "in-progress" ? "default" : "outline"}
-          onClick={() => setFilter("in-progress")}
+          variant={status === "in-progress" ? "default" : "outline"}
+          onClick={() => onStatusChange?.("in-progress")}
         >
           In Progress ({taskCounts["in-progress"]})
         </Button>
         <Button
-          variant={filter === "completed" ? "default" : "outline"}
-          onClick={() => setFilter("completed")}
+          variant={status === "completed" ? "default" : "outline"}
+          onClick={() => onStatusChange?.("completed")}
         >
           Completed ({taskCounts.completed})
         </Button>
       </div>
 
-      {filteredTasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
@@ -74,22 +90,43 @@ export const TaskList = ({ tasks, onEdit, onDelete }: TaskListProps) => {
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {filter === "all"
+            {status === "all"
               ? "Get started by creating a new task."
-              : `No ${filter} tasks found.`}
+              : `No ${status} tasks found.`}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={onPrevPage}
+              disabled={page <= 1 || !onPrevPage}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-600">
+              Page {page} of {Math.max(1, totalPages)}
+            </span>
+            <Button
+              variant="outline"
+              onClick={onNextPage}
+              disabled={page >= (totalPages || 1) || !onNextPage}
+            >
+              Next
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );

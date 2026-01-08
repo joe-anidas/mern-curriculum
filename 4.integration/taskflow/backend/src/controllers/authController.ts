@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../models/User";
 import { signJwt } from "../middleware/auth";
-import { isValidEmail, isValidPassword } from "../utils/validators";
-
+import {
+  isValidEmail,
+  isValidPassword,
+  isValidName,
+} from "../utils/validators";
 
 export async function register(
   req: Request,
@@ -14,6 +17,20 @@ export async function register(
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: "name, email, password required" });
+    }
+
+    const nameValidation = isValidName(name);
+    if (!nameValidation.valid) {
+      return res.status(400).json({ error: nameValidation.message });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "invalid email format" });
+    }
+
+    const pw = isValidPassword(password);
+    if (!pw.valid) {
+      return res.status(400).json({ error: pw.message });
     }
 
     const existing = await User.findOne({ email });
@@ -35,7 +52,6 @@ export async function register(
     next(err);
   }
 }
-
 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {

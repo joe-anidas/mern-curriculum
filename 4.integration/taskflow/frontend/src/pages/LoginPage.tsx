@@ -28,6 +28,7 @@ export const LoginPage = () => {
   const fillDemoCredentials = () => {
     setValue("email", "test@example.com");
     setValue("password", "password123");
+
   };
 
   const onSubmit = async (data: LoginFormData) => {
