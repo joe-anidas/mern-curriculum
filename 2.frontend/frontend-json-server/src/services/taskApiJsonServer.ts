@@ -17,7 +17,7 @@ export const getTasks = async (userId: string): Promise<Task[]> => {
 
   const tasks = await response.json();
 
-  return tasks.map((task: any) => ({
+  return tasks.map((task: Task) => ({
     ...task,
     createdAt: new Date(task.createdAt),
     updatedAt: new Date(task.updatedAt),

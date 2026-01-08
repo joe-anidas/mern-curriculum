@@ -2,12 +2,13 @@ import { Response, NextFunction } from "express";
 import Task from "../models/Task";
 import { AuthenticatedRequest } from "../middleware/auth";
 
-
 const asTask = (task: any) => ({
   id: task._id.toString(),
   title: task.title,
   description: task.description,
   status: task.status,
+  createdAt: task.createdAt,
+  updatedAt: task.updatedAt,
 });
 
 export async function getTasks(

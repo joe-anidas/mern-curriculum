@@ -1,11 +1,10 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTasks,
   createTask,
   updateTask,
   deleteTask,
-} from "../services/taskApiJsonServer";
+} from "../services/taskApi";
 import type {
   Task,
   CreateTaskData,
@@ -13,9 +12,9 @@ import type {
   TaskFormData,
 } from "../types/task";
 
-const tasksQueryKey = (userId?: string) => ["tasks", userId];
+const tasksQueryKey = () => ["tasks"];
 
-export const useTasks = (userId?: string) => {
+export const useTasks = () => {
   const queryClient = useQueryClient();
 
   const {
@@ -24,22 +23,17 @@ export const useTasks = (userId?: string) => {
     isError,
     error,
   } = useQuery<Task[], Error>({
-    queryKey: tasksQueryKey(userId),
-    queryFn: () => getTasks(userId!),
-    enabled: Boolean(userId),
+    queryKey: tasksQueryKey(),
+    queryFn: () => getTasks(),
   });
-
 
   const createTaskMutation = useMutation({
     mutationFn: (data: TaskFormData) => {
-      if (!userId) {
-        throw new Error("User not found");
-      }
-      const payload: CreateTaskData = { ...data, userId };
+      const payload: CreateTaskData = { ...data } as CreateTaskData;
       return createTask(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tasksQueryKey(userId) });
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey() });
     },
   });
 
@@ -47,14 +41,14 @@ export const useTasks = (userId?: string) => {
     mutationFn: ({ id, data }: { id: string; data: UpdateTaskData }) =>
       updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tasksQueryKey(userId) });
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey() });
     },
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: (id: string) => deleteTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tasksQueryKey(userId) });
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey() });
     },
   });
 
