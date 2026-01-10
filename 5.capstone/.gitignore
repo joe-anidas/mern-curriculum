@@ -1,0 +1,5 @@
+node_modules
+.gitattributes
+package-lock.json
+package.json
+Doc.md
