@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type TaskStatus = "todo" | "in-progress" | "completed";
+export type TaskStatus = "todo" | "in-progress" | "in-review" | "completed";
 export type TaskPriority = "low" | "medium" | "high";
 
 export interface ITask extends Document {
@@ -9,17 +9,25 @@ export interface ITask extends Document {
   status: TaskStatus;
   priority: TaskPriority;
   userId: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
   tenantId: mongoose.Types.ObjectId;
+  sprintId?: mongoose.Types.ObjectId | null;
   dueDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  attachments: {
+    name: string;
+    url: string;
+    publicId: string;
+    uploadedAt: Date;
+  }[];
   isOverdue(): boolean;
 }
 
 interface ITaskModel extends Model<ITask> {
   findByStatus(
     userId: mongoose.Types.ObjectId,
-    status: TaskStatus
+    status: TaskStatus,
   ): Promise<ITask[]>;
 }
 
@@ -41,8 +49,9 @@ const taskSchema = new Schema<ITask, ITaskModel>(
     status: {
       type: String,
       enum: {
-        values: ["todo", "in-progress", "completed"],
-        message: "Status must be one of: todo, in-progress, completed",
+        values: ["todo", "in-progress", "in-review", "completed"],
+        message:
+          "Status must be one of: todo, in-progress, in-review, completed",
       },
       default: "todo",
       lowercase: true,
@@ -58,17 +67,37 @@ const taskSchema = new Schema<ITask, ITaskModel>(
       required: [true, "User ID is required"],
       index: true,
     },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "Creator ID is required"],
+      index: true,
+    },
     tenantId: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
       required: [true, "Tenant ID is required"],
       index: true,
     },
+    sprintId: {
+      type: Schema.Types.ObjectId,
+      ref: "Sprint",
+      default: null,
+      index: true,
+    },
     dueDate: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now, index: true },
     updatedAt: { type: Date, default: Date.now },
+    attachments: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 taskSchema.pre("save", function (next) {
@@ -90,7 +119,7 @@ taskSchema.methods.isOverdue = function () {
 
 taskSchema.statics.findByStatus = function (
   userId: mongoose.Types.ObjectId,
-  status: TaskStatus
+  status: TaskStatus,
 ) {
   return this.find({ userId, status }).sort({ createdAt: -1 });
 };

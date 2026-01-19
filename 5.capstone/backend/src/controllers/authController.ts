@@ -20,13 +20,13 @@ const buildAuthToken = (user: IUser) =>
       role: user.role,
       tenantId: user.tenantId ? user.tenantId.toString() : undefined,
     },
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
 
 export async function register(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const {
@@ -196,7 +196,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 export async function createTenantUser(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user;
@@ -217,6 +217,13 @@ export async function createTenantUser(
       role?: UserRole;
       tenantId?: string;
     };
+
+    console.log("[createTenantUser] Request:", {
+      actorId: actor.userId,
+      actorRole: actor.role,
+      requestedRole,
+      bodyTenantId,
+    });
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -260,6 +267,21 @@ export async function createTenantUser(
       }
       tenantId = bodyTenantId;
       role = requestedRole === "tenantAdmin" ? "tenantAdmin" : "user";
+
+      // Enforce single tenant admin rule
+      if (role === "tenantAdmin") {
+        const existingAdmin = await User.findOne({
+          tenantId,
+          role: "tenantAdmin",
+        });
+
+        if (existingAdmin) {
+          return res.status(409).json({
+            success: false,
+            error: "This organization already has a Tenant Admin",
+          });
+        }
+      }
     } else {
       // Tenant admins can only create users inside their own tenant
       role = "user";
@@ -308,7 +330,7 @@ export async function createTenantUser(
 export async function listUsers(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user;
@@ -352,7 +374,7 @@ export async function listUsers(
 export async function getOrganization(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user;
@@ -384,10 +406,102 @@ export async function getOrganization(
   }
 }
 
+export async function getAllOrganizations(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const actor = req.user;
+    if (!actor || actor.role !== "superadmin") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const organizations = await Organization.find({})
+      .select("name _id")
+      .sort({ name: 1 });
+
+    // Fetch all tenant admins to identify which organizations already have one
+    const tenantAdmins = await User.find({ role: "tenantAdmin" }).select(
+      "tenantId",
+    );
+    const tenantAdminMap = new Set(
+      tenantAdmins.map((u) => u.tenantId?.toString()),
+    );
+
+    return res.json({
+      success: true,
+      organizations: organizations.map((org) => ({
+        id: org._id.toString(),
+        name: org.name,
+        hasTenantAdmin: tenantAdminMap.has(org._id.toString()),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createOrganization(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const actor = req.user;
+    if (!actor || actor.role !== "superadmin") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const { name } = req.body as { name?: string };
+
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Organization name is required" });
+    }
+
+    const trimmedName = name.trim();
+
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: "Organization name must be between 2 and 100 characters",
+      });
+    }
+
+    const existingOrg = await Organization.findOne({ name: trimmedName });
+    if (existingOrg) {
+      return res.status(409).json({
+        success: false,
+        error: "Organization with this name already exists",
+      });
+    }
+
+    const organization = new Organization({
+      name: trimmedName,
+      createdBy: actor.userId,
+    });
+
+    await organization.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Organization created successfully",
+      organization: {
+        id: organization._id.toString(),
+        name: organization.name,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function updateOrganizationName(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user;
@@ -469,15 +583,26 @@ export async function updateOrganizationName(
   }
 }
 
-export async function logout(_req: Request, res: Response) {
-  // Stateless JWT logout: client should discard token; this is a no-op endpoint.
-  return res.json({ success: true, message: "Logged out" });
+export async function logout(req: AuthenticatedRequest, res: Response) {
+  try {
+    console.log(`✅ User ${req.user?.userId} logged out successfully`);
+
+    return res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (err) {
+    return res.json({
+      success: true,
+      message: "Logged out",
+    });
+  }
 }
 
 export async function forgotPassword(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { email } = req.body as { email?: string };
@@ -534,7 +659,7 @@ export async function forgotPassword(
 export async function verifyOTP(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { email, otp } = req.body as { email?: string; otp?: string };
@@ -597,7 +722,7 @@ export async function verifyOTP(
 export async function resetPassword(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { resetToken, newPassword } = req.body as {
@@ -660,6 +785,180 @@ export async function resetPassword(
       success: true,
       message:
         "Password reset successfully. Please login with your new password.",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { name, email, role } = req.body as {
+      name?: string;
+      email?: string;
+      role?: UserRole;
+    };
+
+    if (!isValidObjectId(id)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid user identifier" });
+    }
+
+    const targetUser = await User.findById(id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    // Permission checks
+    if (actor.role === "tenantAdmin") {
+      if (
+        !actor.tenantId ||
+        targetUser.tenantId?.toString() !== actor.tenantId
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot update users outside your tenant",
+        });
+      }
+      // Tenant admins can't update other admins or superadmins
+      if (targetUser.role !== "user") {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot update admin users",
+        });
+      }
+    } else if (actor.role !== "superadmin") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    // Update fields
+    if (name) {
+      const nameCheck = isValidName(name);
+      if (!nameCheck.valid) {
+        return res
+          .status(400)
+          .json({ success: false, error: nameCheck.message });
+      }
+      targetUser.name = name;
+    }
+
+    if (email) {
+      if (!isValidEmail(email)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Please provide a valid email" });
+      }
+      const existingUser = await User.findOne({
+        email,
+        _id: { $ne: id },
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          error: "User with this email already exists",
+        });
+      }
+      targetUser.email = email;
+    }
+
+    if (role) {
+      if (actor.role === "tenantAdmin") {
+        return res.status(403).json({
+          success: false,
+          error: "Tenant admins cannot change user roles",
+        });
+      }
+      targetUser.role = role;
+    }
+
+    await targetUser.save();
+
+    return res.json({
+      success: true,
+      message: "User updated successfully",
+      user: {
+        id: targetUser._id.toString(),
+        name: targetUser.name,
+        email: targetUser.email,
+        role: targetUser.role,
+        tenantId: targetUser.tenantId ? targetUser.tenantId.toString() : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid user identifier" });
+    }
+
+    const targetUser = await User.findById(id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    // Can't delete yourself
+    if (targetUser._id.toString() === actor.userId) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot delete your own account",
+      });
+    }
+
+    // Permission checks
+    if (actor.role === "tenantAdmin") {
+      if (
+        !actor.tenantId ||
+        targetUser.tenantId?.toString() !== actor.tenantId
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot delete users outside your tenant",
+        });
+      }
+      // Tenant admins can't delete other admins or superadmins
+      if (targetUser.role !== "user") {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot delete admin users",
+        });
+      }
+    } else if (actor.role !== "superadmin") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    await User.deleteOne({ _id: id });
+
+    return res.json({
+      success: true,
+      message: "User deleted successfully",
     });
   } catch (err) {
     next(err);

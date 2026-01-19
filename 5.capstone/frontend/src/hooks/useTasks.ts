@@ -43,7 +43,7 @@ export const useTasks = (context?: UseTasksContext) => {
   const isQueryEnabled =
     role === "superadmin" ? true : Boolean(tenantId || userId);
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: tasksQueryKey(context, { page, limit, q, status }),
     queryFn: () =>
       taskService.getTasks({
@@ -68,7 +68,7 @@ export const useTasks = (context?: UseTasksContext) => {
       if (tenantId) {
         payload.tenantId = tenantId;
       }
-      if (role !== "user" && userId) {
+      if (role !== "user" && !data.userId && userId) {
         payload.userId = userId;
       }
       return taskService.createTask(payload);
@@ -150,5 +150,6 @@ export const useTasks = (context?: UseTasksContext) => {
     isCreating: createTaskMutation.isPending,
     isUpdating: updateTaskMutation.isPending,
     isDeleting: deleteTaskMutation.isPending,
+    refetch,
   };
 };

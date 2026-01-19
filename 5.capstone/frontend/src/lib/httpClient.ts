@@ -123,11 +123,15 @@ class HTTPClient {
       : `${this.baseURL}${endpoint}`;
 
     const headers = new Headers({
-      "Content-Type": "application/json",
       ...(fetchOptions.headers instanceof Headers
         ? Object.fromEntries(fetchOptions.headers)
         : (fetchOptions.headers as Record<string, string>)),
     });
+
+    // Only set JSON content type if it's not FormData
+    if (!(fetchOptions.body instanceof FormData)) {
+        headers.set("Content-Type", "application/json");
+    }
 
     // Add auth token if not skipped
     if (!skipAuth) {
@@ -172,10 +176,11 @@ class HTTPClient {
     data?: unknown,
     options?: RequestOptions
   ): Promise<T> {
+    const isFormData = data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? (data as BodyInit) : (data ? JSON.stringify(data) : undefined),
     });
   }
 
@@ -184,10 +189,11 @@ class HTTPClient {
     data?: unknown,
     options?: RequestOptions
   ): Promise<T> {
+    const isFormData = data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? (data as BodyInit) : (data ? JSON.stringify(data) : undefined),
     });
   }
 

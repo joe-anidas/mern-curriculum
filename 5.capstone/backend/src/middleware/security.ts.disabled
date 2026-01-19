@@ -1,0 +1,490 @@
+import { Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+
+/**
+ * Security Headers Middleware
+ * Adds various HTTP headers to protect against common vulnerabilities
+ */
+export const securityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow embedding for Socket.IO
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  dnsPrefetchControl: { allow: false },
+  frameguard: { action: "deny" },
+  hidePoweredBy: true,
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  ieNoOpen: true,
+  noSniff: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  xssFilter: true,
+});
+
+/**
+ * Helper function to check for NoSQL injection patterns
+ */
+function hasNoSQLInjection(obj: any, path: string = ""): string | null {
+  if (obj === null || obj === undefined) return null;
+
+  if (typeof obj === "object") {
+    for (const key in obj) {
+      // Check for MongoDB operators
+      if (key.startsWith("$") || key.includes(".")) {
+        return `${path}${key}`;
+      }
+
+      // Recursively check nested objects
+      const nestedPath = path ? `${path}.${key}` : key;
+      const result = hasNoSQLInjection(obj[key], nestedPath);
+      if (result) return result;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * NoSQL Injection Prevention
+ * Custom implementation compatible with Express 5+
+ */
+export const preventNoSQLInjection = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Check body
+  if (req.body) {
+    const bodyInjection = hasNoSQLInjection(req.body);
+    if (bodyInjection) {
+      console.warn(`⚠️  Potential NoSQL injection in body: ${bodyInjection}`);
+      return res.status(400).json({
+        success: false,
+        error: "Bad Request",
+        message: "Invalid characters detected in request body",
+      });
+    }
+  }
+
+  // Check query parameters
+  if (req.query) {
+    const queryInjection = hasNoSQLInjection(req.query);
+    if (queryInjection) {
+      console.warn(`⚠️  Potential NoSQL injection in query: ${queryInjection}`);
+      return res.status(400).json({
+        success: false,
+        error: "Bad Request",
+        message: "Invalid characters detected in query parameters",
+      });
+    }
+  }
+
+  // Check params
+  if (req.params) {
+    const paramsInjection = hasNoSQLInjection(req.params);
+    if (paramsInjection) {
+      console.warn(`⚠️  Potential NoSQL injection in params: ${paramsInjection}`);
+      return res.status(400).json({
+        success: false,
+        error: "Bad Request",
+        message: "Invalid characters detected in URL parameters",
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * HTTP Parameter Pollution Prevention
+ * Prevents duplicate query parameters (custom implementation)
+ */
+export const preventParameterPollution = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const whitelist = ["status", "priority", "page", "limit"]; // Allow these to be arrays
+
+  // Check for duplicate parameters in query
+  const query = req.query;
+  for (const key in query) {
+    const value = query[key];
+    
+    // If it's an array and not in whitelist, take only the first value
+    if (Array.isArray(value) && !whitelist.includes(key)) {
+      console.warn(`⚠️  Parameter pollution detected for key: ${key}`);
+      // We can't modify req.query directly, so we'll validate and reject
+      return res.status(400).json({
+        success: false,
+        error: "Bad Request",
+        message: `Duplicate parameter detected: ${key}. Only one value is allowed.`,
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * General API Rate Limiter
+ * Limits requests to prevent abuse and DDoS attacks
+ */
+export const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // 100 requests per window per IP
+  message: {
+    success: false,
+    error: "Too Many Requests",
+    message: "Too many requests from this IP, please try again later.",
+    retryAfter: "15 minutes",
+  },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  handler: (req: Request, res: Response) => {
+    console.warn(
+      `⚠️  Rate limit exceeded for IP: ${req.ip} on ${req.path}`
+    );
+    res.status(429).json({
+      success: false,
+      error: "Too Many Requests",
+      message: "Too many requests from this IP, please try again later.",
+      retryAfter: "15 minutes",
+    });
+  },
+});
+
+/**
+ * Strict Rate Limiter for Authentication Endpoints
+ * Prevents brute-force attacks on login/register
+ */
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15, // 5 attempts per window
+  skipSuccessfulRequests: true, // Don't count successful requests
+  message: {
+    success: false,
+    error: "Too Many Login Attempts",
+    message:
+      "Too many authentication attempts from this IP, please try again after 15 minutes.",
+    retryAfter: "15 minutes",
+  },
+  handler: (req: Request, res: Response) => {
+    console.warn(
+      `🚨 Multiple failed auth attempts from IP: ${req.ip} on ${req.path}`
+    );
+    res.status(429).json({
+      success: false,
+      error: "Too Many Login Attempts",
+      message:
+        "Too many authentication attempts. Your IP has been temporarily blocked.",
+      retryAfter: "15 minutes",
+    });
+  },
+});
+
+/**
+ * Password Reset Rate Limiter
+ * Prevents abuse of password reset functionality
+ */
+export const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 attempts per hour
+  message: {
+    success: false,
+    error: "Too Many Password Reset Requests",
+    message: "Too many password reset attempts, please try again later.",
+    retryAfter: "1 hour",
+  },
+  handler: (req: Request, res: Response) => {
+    console.warn(
+      `⚠️  Multiple password reset attempts from IP: ${req.ip}`
+    );
+    res.status(429).json({
+      success: false,
+      error: "Too Many Password Reset Requests",
+      message:
+        "Too many password reset attempts from this IP. Please try again after 1 hour.",
+      retryAfter: "1 hour",
+    });
+  },
+});
+
+/**
+ * File Upload Rate Limiter
+ * Prevents abuse of file upload endpoints
+ */
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // 20 uploads per hour
+  message: {
+    success: false,
+    error: "Upload Limit Exceeded",
+    message: "Too many file uploads, please try again later.",
+    retryAfter: "1 hour",
+  },
+});
+
+/**
+ * Strict Rate Limiter for Task Creation
+ * Prevents spam task creation
+ */
+export const taskCreationLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 tasks per minute
+  message: {
+    success: false,
+    error: "Task Creation Limit Exceeded",
+    message: "Too many tasks created. Please slow down.",
+    retryAfter: "1 minute",
+  },
+});
+
+/**
+ * Request Size Limiter
+ * Prevents large payload attacks
+ */
+export const requestSizeLimiter = (req: Request, res: Response, next: NextFunction) => {
+  const contentLength = req.headers["content-length"];
+  const maxSize = 10 * 1024 * 1024; // 10MB
+
+  if (contentLength && parseInt(contentLength) > maxSize) {
+    console.warn(
+      `⚠️  Request size too large from IP: ${req.ip} - Size: ${contentLength}`
+    );
+    return res.status(413).json({
+      success: false,
+      error: "Payload Too Large",
+      message: "Request body size exceeds maximum allowed size of 10MB",
+    });
+  }
+
+  next();
+};
+
+/**
+ * Suspicious Activity Detector
+ * Logs and blocks suspicious patterns
+ */
+export const suspiciousActivityDetector = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const suspiciousPatterns = [
+    /(\.\.|\/etc\/|\/var\/|\/usr\/)/i, // Path traversal
+    /(union|select|insert|update|delete|drop|create|alter)/i, // SQL injection
+    /(<script|javascript:|onerror=|onload=)/i, // XSS attempts
+    /(eval\(|exec\(|system\()/i, // Code injection
+  ];
+
+  const requestString = JSON.stringify({
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
+
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(requestString)) {
+      console.error(
+        `🚨 SECURITY ALERT: Suspicious activity detected from IP: ${req.ip}`,
+        {
+          path: req.path,
+          method: req.method,
+          pattern: pattern.toString(),
+          userAgent: req.headers["user-agent"],
+        }
+      );
+
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden",
+        message: "Suspicious activity detected. Request blocked.",
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * IP Whitelist/Blacklist Middleware
+ * Allows blocking specific IPs or allowing only whitelisted IPs
+ */
+const blacklistedIPs = new Set<string>([
+  // Add blacklisted IPs here
+]);
+
+const whitelistedIPs = new Set<string>([
+  // Add whitelisted IPs here (if using whitelist mode)
+]);
+
+export const ipFilter = (mode: "blacklist" | "whitelist" = "blacklist") => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const clientIP = req.ip || req.socket.remoteAddress || "unknown";
+
+    if (mode === "blacklist" && blacklistedIPs.has(clientIP)) {
+      console.warn(`🚫 Blocked request from blacklisted IP: ${clientIP}`);
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden",
+        message: "Access denied",
+      });
+    }
+
+    if (
+      mode === "whitelist" &&
+      whitelistedIPs.size > 0 &&
+      !whitelistedIPs.has(clientIP)
+    ) {
+      console.warn(`🚫 Blocked request from non-whitelisted IP: ${clientIP}`);
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden",
+        message: "Access denied",
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * CORS Configuration with Security
+ */
+export const secureCorsOptions = (allowedOrigins: string[]) => ({
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["X-Total-Count", "X-Page-Count"],
+  credentials: true,
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 204,
+});
+
+/**
+ * Request Logging for Security Audit
+ */
+export const securityAuditLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const startTime = Date.now();
+
+  // Log request
+  const requestLog = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+    userAgent: req.headers["user-agent"],
+    userId: (req as any).user?.userId || "anonymous",
+  };
+
+  // Log response
+  res.on("finish", () => {
+    const duration = Date.now() - startTime;
+    const responseLog = {
+      ...requestLog,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+    };
+
+    // Log suspicious status codes
+    if (res.statusCode >= 400) {
+      console.warn("⚠️  Security Audit:", responseLog);
+    }
+  });
+
+  next();
+};
+
+/**
+ * Content Type Validation
+ * Ensures requests have appropriate content types
+ */
+export const validateContentType = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (["POST", "PUT", "PATCH"].includes(req.method)) {
+    const contentType = req.headers["content-type"];
+
+    if (
+      !contentType ||
+      (!contentType.includes("application/json") &&
+        !contentType.includes("multipart/form-data"))
+    ) {
+      return res.status(415).json({
+        success: false,
+        error: "Unsupported Media Type",
+        message: "Content-Type must be application/json or multipart/form-data",
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * Prevent Timing Attacks
+ * Adds random delay to prevent timing-based attacks
+ */
+export const preventTimingAttacks = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Add small random delay (10-50ms) to prevent timing attacks
+  const delay = Math.floor(Math.random() * 40) + 10;
+  await new Promise((resolve) => setTimeout(resolve, delay));
+  next();
+};
+
+/**
+ * Export all security middleware as a bundle
+ */
+export const applySecurityMiddleware = (app: any, allowedOrigins: string[]) => {
+  // Apply in order of importance
+  app.use(securityHeaders);
+  app.use(preventNoSQLInjection);
+  app.use(preventParameterPollution);
+  app.use(requestSizeLimiter);
+  app.use(suspiciousActivityDetector);
+  app.use(securityAuditLogger);
+  app.use(validateContentType);
+
+  console.log("✅ Security middleware applied successfully");
+};

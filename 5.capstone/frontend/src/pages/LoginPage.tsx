@@ -37,6 +37,14 @@ export const LoginPage = () => {
     },
   });
 
+  const { ref: passwordFieldRef, ...passwordField } = register("password", {
+    required: "Password is required",
+    minLength: {
+      value: 6,
+      message: "Password must be at least 6 characters",
+    },
+  });
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError(null);
@@ -120,14 +128,11 @@ export const LoginPage = () => {
                 </label>
                 <div className="relative">
                   <input
-                    ref={passwordInputRef}
-                    {...register("password", {
-                      required: "Password is required",
-                      minLength: {
-                        value: 6,
-                        message: "Password must be at least 6 characters",
-                      },
-                    })}
+                    {...passwordField}
+                    ref={(el) => {
+                      passwordFieldRef(el);
+                      passwordInputRef.current = el;
+                    }}
                     id="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
@@ -137,12 +142,15 @@ export const LoginPage = () => {
                   <button
                     type="button"
                     tabIndex={-1}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowPassword(!showPassword);
+                    }}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      setShowPassword(!showPassword);
-                      passwordInputRef.current?.focus();
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none pointer-events-auto"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none z-10"
                   >
                     {showPassword ? (
                       <svg

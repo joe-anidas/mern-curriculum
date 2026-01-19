@@ -43,6 +43,22 @@ export const RegisterPage = () => {
 
   const password = watch("password");
 
+  const { ref: passwordFieldRef, ...passwordField } = register("password", {
+    required: "Password is required",
+    minLength: {
+      value: 6,
+      message: "Password must be at least 6 characters",
+    },
+  });
+
+  const { ref: confirmPasswordFieldRef, ...confirmPasswordField } = register(
+    "confirmPassword",
+    {
+      required: "Please confirm your password",
+      validate: (value) => value === password || "Passwords do not match",
+    }
+  );
+
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     setError(null);
@@ -149,14 +165,11 @@ export const RegisterPage = () => {
                 </label>
                 <div className="relative">
                   <input
-                    ref={passwordInputRef}
-                    {...register("password", {
-                      required: "Password is required",
-                      minLength: {
-                        value: 6,
-                        message: "Password must be at least 6 characters",
-                      },
-                    })}
+                    {...passwordField}
+                    ref={(el) => {
+                      passwordFieldRef(el);
+                      passwordInputRef.current = el;
+                    }}
                     id="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
@@ -245,12 +258,11 @@ export const RegisterPage = () => {
                 </label>
                 <div className="relative">
                   <input
-                    ref={confirmPasswordInputRef}
-                    {...register("confirmPassword", {
-                      required: "Please confirm your password",
-                      validate: (value) =>
-                        value === password || "Passwords do not match",
-                    })}
+                    {...confirmPasswordField}
+                    ref={(el) => {
+                      confirmPasswordFieldRef(el);
+                      confirmPasswordInputRef.current = el;
+                    }}
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     autoComplete="new-password"

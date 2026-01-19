@@ -24,7 +24,7 @@ export function isValidTaskTitle(title: string) {
 }
 
 export function isValidTaskStatus(status: string) {
-  const validStatuses = ["todo", "in-progress", "completed"];
+  const validStatuses = ["todo", "in-progress", "in-review", "completed"];
   if (!validStatuses.includes(status)) {
     return {
       valid: false,

@@ -9,6 +9,7 @@ export interface IUser extends Document {
   passwordHash: string;
   role: UserRole;
   tenantId?: mongoose.Types.ObjectId;
+  fcmTokens: string[];
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -52,6 +53,10 @@ const userSchema = new Schema<IUser>(
       ref: "Organization",
       required: false,
       index: true,
+    },
+    fcmTokens: {
+      type: [String],
+      default: [],
     },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },

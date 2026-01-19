@@ -1,20 +1,34 @@
-export type TaskStatus = "todo" | "in-progress" | "completed";
+export type TaskStatus = "todo" | "in-progress" | "in-review" | "completed";
+export type TaskPriority = "low" | "medium" | "high";
 
 export interface Task {
   id: string;
   userId?: string;
+  createdBy?: string;
   tenantId: string;
   title: string;
-  description: string;
+  description?: string;
   status: TaskStatus;
+  priority?: TaskPriority;
+  sprintId?: string | null;
+  dueDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  attachments?: {
+    _id?: string;
+    name: string;
+    url: string;
+    publicId: string;
+    uploadedAt: Date;
+  }[];
 }
 
 export type TaskFormData = {
   title: string;
-  description: string;
+  description?: string;
   status: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string | null;
 };
 
 export type CreateTaskData = TaskFormData & {
@@ -31,6 +45,7 @@ export type TaskQueryParams = {
   q?: string;
   tenantId?: string;
   userId?: string;
+  priority?: TaskPriority | "all";
 };
 
 export type TaskPage = {

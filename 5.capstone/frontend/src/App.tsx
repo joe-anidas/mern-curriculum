@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { ErrorBoundary, Loader } from "@/components";
+import { Toaster } from "sonner";
+import { useNotifications } from "@/hooks";
 
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
@@ -15,8 +17,12 @@ const ProtectedRoute = lazy(() =>
 );
 
 function App() {
+  // Initialize notification service
+  useNotifications();
+
   return (
     <ErrorBoundary>
+      <Toaster position="top-right" richColors />
       <BrowserRouter>
         <Suspense fallback={<Loader />}>
           <Routes>

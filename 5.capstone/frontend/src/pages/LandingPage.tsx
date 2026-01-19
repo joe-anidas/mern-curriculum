@@ -16,7 +16,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen">
       <Navbar />
 
       {/* Hero Section */}
@@ -59,34 +59,6 @@ export default function LandingPage() {
                 </Button>
               </>
             )}
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 w-full">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-3xl mb-4">✓</div>
-              <h3 className="text-xl font-semibold mb-2">
-                Easy Task Management
-              </h3>
-              <p className="text-gray-600">
-                Create, organize, and track your tasks with an intuitive
-                interface
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-3xl mb-4">⚡</div>
-              <h3 className="text-xl font-semibold mb-2">Boost Productivity</h3>
-              <p className="text-gray-600">
-                Prioritize tasks and stay focused on what matters most
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-3xl mb-4">🔒</div>
-              <h3 className="text-xl font-semibold mb-2">Secure & Private</h3>
-              <p className="text-gray-600">
-                Your data is protected with enterprise-grade security
-              </p>
-            </div>
           </div>
         </div>
       </div>
