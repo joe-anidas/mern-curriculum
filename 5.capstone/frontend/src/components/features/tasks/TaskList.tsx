@@ -20,7 +20,6 @@ export const TaskList = ({
   tasks,
   onEdit,
   onDelete,
-  onStatusChange,
   page = 1,
   totalPages = 1,
   onPrevPage,
@@ -224,7 +223,6 @@ export const TaskList = ({
                 task={task}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onStatusChange={onStatusChange}
               />
             ))}
           </div>

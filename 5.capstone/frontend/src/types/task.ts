@@ -36,7 +36,9 @@ export type CreateTaskData = TaskFormData & {
   tenantId?: string;
 };
 
-export type UpdateTaskData = Partial<TaskFormData>;
+export type UpdateTaskData = Partial<TaskFormData> & {
+  userId?: string;
+};
 
 export type TaskQueryParams = {
   page?: number;

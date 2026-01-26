@@ -2,7 +2,7 @@
   "info": {
     "name": "Taskflow Backend",
     "_postman_id": "7e3b0f0e-5c15-4d75-8f0c-d24f0d3b31b2",
-    "description": "Postman collection for the Taskflow backend APIs (auth + tasks). Set the {{baseUrl}} and {{authToken}} variables before sending requests.",
+    "description": "Postman collection for the Taskflow backend APIs (auth, tasks, sprints, notifications, analytics). Set the {{baseUrl}} and {{authToken}} variables before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,14 +12,17 @@
     { "key": "userId", "value": "" },
     { "key": "taskId", "value": "" },
     { "key": "resetToken", "value": "" },
-    { "key": "otp", "value": "" }
+    { "key": "otp", "value": "" },
+    { "key": "sprintId", "value": "" },
+    { "key": "notificationId", "value": "" }
   ],
   "auth": {
     "type": "bearer",
     "bearer": [
       {
         "key": "token",
-        "value": ""
+        "value": "{{authToken}}",
+        "type": "string"
       }
     ]
   },
@@ -172,6 +175,36 @@
           "response": []
         },
         {
+           "name": "Update User (tenantAdmin/superadmin)",
+           "request": {
+             "method": "PATCH",
+             "header": [{ "key": "Content-Type", "value": "application/json" }],
+             "body": {
+               "mode": "raw",
+               "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"role\": \"user\"\n}"
+             },
+             "url": {
+               "raw": "{{baseUrl}}/api/auth/users/{{userId}}",
+               "host": ["{{baseUrl}}"],
+               "path": ["api", "auth", "users", "{{userId}}"]
+             }
+           },
+           "response": []
+        },
+        {
+           "name": "Delete User (tenantAdmin/superadmin)",
+           "request": {
+             "method": "DELETE",
+             "header": [],
+             "url": {
+               "raw": "{{baseUrl}}/api/auth/users/{{userId}}",
+               "host": ["{{baseUrl}}"],
+               "path": ["api", "auth", "users", "{{userId}}"]
+             }
+           },
+           "response": []
+        },
+        {
           "name": "Get Organization",
           "request": {
             "method": "GET",
@@ -203,6 +236,36 @@
           "response": []
         },
         {
+           "name": "List All Organizations (superadmin)",
+           "request": {
+             "method": "GET",
+             "header": [],
+             "url": {
+               "raw": "{{baseUrl}}/api/auth/organizations",
+               "host": ["{{baseUrl}}"],
+               "path": ["api", "auth", "organizations"]
+             }
+           },
+           "response": []
+        },
+        {
+           "name": "Create Organization (superadmin)",
+           "request": {
+             "method": "POST",
+             "header": [{ "key": "Content-Type", "value": "application/json" }],
+             "body": {
+               "mode": "raw",
+               "raw": "{\n  \"name\": \"New Org\"\n}"
+             },
+             "url": {
+               "raw": "{{baseUrl}}/api/auth/organizations",
+               "host": ["{{baseUrl}}"],
+               "path": ["api", "auth", "organizations"]
+             }
+           },
+           "response": []
+        },
+        {
           "name": "Current User (/me)",
           "request": {
             "method": "GET",
@@ -216,7 +279,7 @@
           "response": []
         },
         {
-          "name": "Logout (stateless)",
+          "name": "Logout",
           "request": {
             "method": "POST",
             "header": [],
@@ -224,8 +287,7 @@
               "raw": "{{baseUrl}}/api/auth/logout",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "logout"]
-            },
-            "description": "Client should discard JWT; endpoint returns success."
+            }
           },
           "response": []
         }
@@ -314,6 +376,259 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "tasks", "{{taskId}}"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Attachments",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                 { "key": "files", "type": "file" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}", "attachments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Attachment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments/:attachmentId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}", "attachments", ":attachmentId"],
+              "variable": [{ "key": "attachmentId", "value": "" }]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sprints",
+      "item": [
+        {
+          "name": "List Sprints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sprints"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sprint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints/{{sprintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sprints", "{{sprintId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Sprint",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sprint 1\",\n  \"startDate\": \"2023-10-01\",\n  \"endDate\": \"2023-10-14\",\n  \"tenantId\": \"{{tenantId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sprints"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Sprint",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sprint 1 Updated\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints/{{sprintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sprints", "{{sprintId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Sprint",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints/{{sprintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sprints", "{{sprintId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?page=1&limit=20&isRead=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "isRead", "value": "false" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "unread-count"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationIds\": [\"{{notificationId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/mark-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "mark-read"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/mark-all-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "mark-all-read"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete All Read",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register FCM Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"fcm_token_here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/fcm-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "fcm-token"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Task Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "stats"]
+            },
+            "description": "Requires tenantAdmin or superadmin"
+          },
+          "response": []
+        },
+        {
+          "name": "Workload Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/workload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "workload"]
+            },
+            "description": "Requires tenantAdmin or superadmin"
           },
           "response": []
         }

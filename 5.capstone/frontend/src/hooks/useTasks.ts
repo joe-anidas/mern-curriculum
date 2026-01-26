@@ -68,7 +68,9 @@ export const useTasks = (context?: UseTasksContext) => {
       if (tenantId) {
         payload.tenantId = tenantId;
       }
-      if (role !== "user" && !data.userId && userId) {
+      // Only set userId from context if it's not already provided in the data
+      // This allows tenant admins to assign tasks to other users
+      if (role !== "user" && userId && !payload.userId) {
         payload.userId = userId;
       }
       return taskService.createTask(payload);

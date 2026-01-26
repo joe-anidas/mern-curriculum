@@ -12,7 +12,7 @@ interface TaskBoardProps {
   onStatusChange: (id: string, status: TaskStatus) => void;
   onAddTask: (status: TaskStatus) => void;
   onTaskUpdate?: () => void;
-  onUpdate?: (taskId: string, updates: Partial<Task>) => void;
+  onUpdate?: (taskId: string, updates: Partial<Omit<Task, 'dueDate'>> & { dueDate?: string | Date | null }) => void;
   users?: User[];
   currentUserId?: string;
   isTenantAdmin?: boolean;
@@ -63,7 +63,7 @@ export const TaskBoard = ({
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
   };
-  const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => {
+  const handleTaskUpdate = (taskId: string, updates: Partial<Omit<Task, 'dueDate'>> & { dueDate?: string | Date | null }) => {
     // Call the onUpdate prop to save all changes
     if (onUpdate) {
       onUpdate(taskId, updates);

@@ -286,29 +286,38 @@ export async function createTask(
         });
       }
       ownerUserId = targetUser._id.toString();
-    } else if (actor.role === "tenantAdmin" && bodyUserId) {
-      if (!isValidObjectId(bodyUserId)) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid user identifier",
-        });
-      }
-      const targetUser = await User.findById(bodyUserId);
-      if (!targetUser) {
-        return res
-          .status(404)
-          .json({ success: false, error: "User not found" });
-      }
+    } else if (actor.role === "tenantAdmin") {
+      // For tenant admins, if userId is provided and is a valid non-empty string, assign to that user
+      // Otherwise, default to the tenant admin themselves
       if (
-        !targetUser.tenantId ||
-        targetUser.tenantId.toString() !== tenantId.toString()
+        bodyUserId &&
+        typeof bodyUserId === "string" &&
+        bodyUserId.trim() !== ""
       ) {
-        return res.status(403).json({
-          success: false,
-          error: "Cannot assign tasks to users outside your tenant",
-        });
+        if (!isValidObjectId(bodyUserId)) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid user identifier",
+          });
+        }
+        const targetUser = await User.findById(bodyUserId);
+        if (!targetUser) {
+          return res
+            .status(404)
+            .json({ success: false, error: "User not found" });
+        }
+        if (
+          !targetUser.tenantId ||
+          targetUser.tenantId.toString() !== tenantId.toString()
+        ) {
+          return res.status(403).json({
+            success: false,
+            error: "Cannot assign tasks to users outside your tenant",
+          });
+        }
+        ownerUserId = targetUser._id.toString();
       }
-      ownerUserId = targetUser._id.toString();
+      // If bodyUserId is not provided or is empty, ownerUserId remains as actor.userId (tenant admin)
     }
 
     if (!ownerUserId) {
@@ -492,7 +501,7 @@ export async function updateTask(
     }
 
     // 4. Update Assignee (Only for Admins)
-    if (newAssigneeId !== undefined) {
+    if (newAssigneeId !== undefined && newAssigneeId !== null && newAssigneeId !== "") {
       if (actor.role === "user") {
         return res.status(403).json({
           success: false,
