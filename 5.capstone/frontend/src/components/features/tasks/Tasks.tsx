@@ -1,11 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import type {
-  Task,
-  TaskStatus,
-  TaskPriority,
-  TaskFormData,
-  CreateTaskData,
-} from "@/types/task";
+import type { Task, TaskStatus, TaskPriority } from "@/types/task";
 import type { Sprint } from "@/types/sprint";
 import { useTasks } from "@/hooks";
 import { TaskBoard } from "./TaskBoard";
@@ -34,7 +28,6 @@ export const Tasks = () => {
   const [priorityFilter] = useState<TaskPriority | "all">("all");
   const [dueDateFilter] = useState<string>(""); // "" means all
   const [view, setView] = useState<"kanban" | "timeline">("kanban");
-  const canUseTimeline = user?.role === "tenantAdmin" || user?.role === "user";
   const [isSprintsOpen, setIsSprintsOpen] = useState(false);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -148,10 +141,8 @@ export const Tasks = () => {
     tasks.length,
     sprints,
   ]);
-  const handleCreate = (
-    data: Partial<Omit<Task, "dueDate">> & { dueDate?: string | Date | null },
-  ) => {
-    const taskData: CreateTaskData & { sprintId?: string | null } = {
+  const handleCreate = (data: Partial<Task>) => {
+    const taskData = {
       title: data.title!,
       description: data.description || "",
       status: data.status || "todo",
@@ -163,14 +154,8 @@ export const Tasks = () => {
           : formatDateInputIST(data.dueDate)
         : null,
       sprintId: data.sprintId || selectedSprintId || null,
-      // Only use user?.id as fallback if userId is not provided (undefined/null), not if it's empty string
-      userId:
-        data.userId !== undefined && data.userId !== null && data.userId !== ""
-          ? data.userId
-          : user?.role === "user"
-            ? user?.id
-            : undefined,
-      tenantId: user?.tenantId || undefined,
+      userId: data.userId || user?.id,
+      tenantId: user?.tenantId,
     };
 
     createTask(taskData, {
@@ -181,32 +166,18 @@ export const Tasks = () => {
     });
   };
 
-  const handleUpdate = (
-    taskId: string,
-    updates: Partial<Omit<Task, "dueDate">> & {
-      dueDate?: string | Date | null;
-    },
-  ) => {
+  const handleUpdate = (taskId: string, updates: Partial<Task>) => {
     // Convert Date to string for dueDate if needed (IST format)
-    const { dueDate, userId, ...rest } = updates;
+    const { dueDate, ...rest } = updates;
 
-    const formattedUpdates: Partial<TaskFormData & { userId?: string }> = {
-      ...(rest.title && { title: rest.title }),
-      ...(rest.description !== undefined && { description: rest.description }),
-      ...(rest.status && { status: rest.status }),
-      ...(rest.priority && { priority: rest.priority }),
-      ...(dueDate !== undefined && {
+    const formattedUpdates: Partial<Task> = {
+      ...rest,
+      ...(dueDate && {
         dueDate:
-          dueDate === null
-            ? null
-            : typeof dueDate === "string"
-              ? dueDate
-              : formatDateInputIST(dueDate),
+          typeof dueDate === "string"
+            ? dueDate
+            : formatDateInputIST(dueDate),
       }),
-      // Include userId if provided (for tenant admin to reassign tasks)
-      ...(userId !== undefined &&
-        userId !== null &&
-        userId !== "" && { userId }),
     };
 
     updateTask(
@@ -400,20 +371,8 @@ export const Tasks = () => {
             Kanban Board
           </button>
           <button
-            onClick={() => canUseTimeline && setView("timeline")}
-            disabled={!canUseTimeline}
-            className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${
-              view === "timeline"
-                ? "bg-white text-gray-900 shadow-sm"
-                : canUseTimeline
-                  ? "text-gray-500 hover:text-gray-700"
-                  : "text-gray-400 cursor-not-allowed"
-            }`}
-            title={
-              canUseTimeline
-                ? "View tasks on a timeline"
-                : "Timeline is available for Tenant Admins and Users"
-            }
+            disabled
+            className="px-6 py-2 rounded-md text-sm font-semibold text-gray-400 cursor-not-allowed"
           >
             Timeline
           </button>
@@ -482,7 +441,7 @@ export const Tasks = () => {
             isTenantAdmin={user?.role === "tenantAdmin"}
           />
         ) : (
-          <TimelineView tasks={filteredTasks} users={usersList} />
+          <TimelineView tasks={filteredTasks} />
         )}
       </div>
 

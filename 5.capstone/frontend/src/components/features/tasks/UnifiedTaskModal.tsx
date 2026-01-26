@@ -15,15 +15,8 @@ interface UnifiedTaskModalProps {
   task?: Task | null; // If null/undefined, it's create mode
   isOpen: boolean;
   onClose: () => void;
-  onSave: (
-    taskId: string,
-    updates: Partial<Omit<Task, "dueDate">> & {
-      dueDate?: string | Date | null;
-    },
-  ) => void;
-  onCreate?: (
-    data: Partial<Omit<Task, "dueDate">> & { dueDate?: string | Date | null },
-  ) => void;
+  onSave: (taskId: string, updates: Partial<Task>) => void;
+  onCreate?: (data: Partial<Task>) => void;
   onTaskUpdate?: () => void;
   defaultStatus?: TaskStatus;
   users?: User[]; // For tenant admin assignee selection
@@ -57,7 +50,9 @@ export const UnifiedTaskModal = ({
     task?.priority || "medium",
   );
   const [dueDate, setDueDate] = useState<string>(() =>
-    task?.dueDate ? formatDateInputIST(task.dueDate) : getTomorrowIST(),
+    task?.dueDate
+      ? formatDateInputIST(task.dueDate)
+      : getTomorrowIST(),
   );
   const [selectedUserId, setSelectedUserId] = useState<string>(
     task?.userId || currentUserId || "",
@@ -91,7 +86,9 @@ export const UnifiedTaskModal = ({
         setStatus(task.status);
         setPriority(task.priority || "medium");
         setDueDate(
-          task.dueDate ? formatDateInputIST(task.dueDate) : getTomorrowIST(),
+          task.dueDate
+            ? formatDateInputIST(task.dueDate)
+            : getTomorrowIST(),
         );
         setSelectedUserId(task.userId || currentUserId || "");
         // Sprint is read-only in edit mode
@@ -165,13 +162,7 @@ export const UnifiedTaskModal = ({
           // Send date string (YYYY-MM-DD) - backend will parse as IST
           dueDate: dueDate || null,
           sprintId: lockedSprintId || null,
-          // For tenant admin: send selectedUserId if it's not empty, otherwise undefined
-          // For regular users: send currentUserId
-          userId: isTenantAdmin
-            ? selectedUserId && selectedUserId.trim() !== ""
-              ? selectedUserId
-              : undefined
-            : currentUserId,
+          userId: isTenantAdmin ? selectedUserId : currentUserId,
         });
       }
     } else {
@@ -184,10 +175,7 @@ export const UnifiedTaskModal = ({
         // Send date string (YYYY-MM-DD) - backend will parse as IST
         dueDate: dueDate || null,
         sprintId: lockedSprintId || null,
-        // Include userId only if tenant admin and selectedUserId is not empty
-        ...(isTenantAdmin &&
-          selectedUserId &&
-          selectedUserId.trim() !== "" && { userId: selectedUserId }),
+        ...(isTenantAdmin && { userId: selectedUserId }),
       });
     }
     onClose();
