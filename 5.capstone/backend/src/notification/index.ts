@@ -235,10 +235,14 @@ class NotificationService {
         });
       }
 
-      // Send Push Notification
-      await this.sendPushNotification(payload.userId, payload.title, payload.message, payload);
+      // Send Push Notification (non-blocking - notification is already saved and sent via Socket.IO)
+      const pushSent = await this.sendPushNotification(payload.userId, payload.title, payload.message, payload);
 
-      console.log(`📧 Notification sent to user ${payload.userId}`);
+      if (pushSent) {
+        console.log(`📧 Notification sent to user ${payload.userId} (DB + Socket.IO + Push)`);
+      } else {
+        console.log(`📧 Notification sent to user ${payload.userId} (DB + Socket.IO, Push failed)`);
+      }
     } catch (error) {
       console.error("Error sending notification:", error);
     }
@@ -297,12 +301,22 @@ class NotificationService {
       // Send Push to ALL users in tenant
       // We need to fetch all users for this tenant
       const users = await User.find({ tenantId: new mongoose.Types.ObjectId(payload.tenantId) });
-      const promises = users.map(u => 
-        this.sendPushNotification(u._id.toString(), payload.title, payload.message, payload)
+      const pushResults = await Promise.allSettled(
+        users.map(u => 
+          this.sendPushNotification(u._id.toString(), payload.title, payload.message, payload)
+        )
       );
-      await Promise.allSettled(promises);
+      
+      const successfulPushes = pushResults.filter(r => r.status === 'fulfilled' && r.value === true).length;
+      const totalUsers = users.length;
 
-      console.log(`📧 Notification sent to tenant ${payload.tenantId}`);
+      if (successfulPushes === totalUsers) {
+        console.log(`📧 Notification sent to tenant ${payload.tenantId} (DB + Socket.IO + Push to all ${totalUsers} users)`);
+      } else if (successfulPushes > 0) {
+        console.log(`📧 Notification sent to tenant ${payload.tenantId} (DB + Socket.IO + Push to ${successfulPushes}/${totalUsers} users)`);
+      } else {
+        console.log(`📧 Notification sent to tenant ${payload.tenantId} (DB + Socket.IO, Push failed for all users)`);
+      }
     } catch (error) {
       console.error("Error sending tenant notification:", error);
     }
@@ -310,24 +324,25 @@ class NotificationService {
 
   /**
    * Send Firebase Push Notification
+   * @returns true if push notification was sent successfully, false otherwise
    */
   private async sendPushNotification(
     userId: string,
     title: string,
     body: string,
     data?: any
-  ) {
+  ): Promise<boolean> {
     console.log(`🚀 Attempting to send push to user: ${userId}`);
     try {
       const user = await User.findById(userId);
       if (!user) {
         console.warn(`⚠️ User not found for push: ${userId}`);
-        return;
+        return false;
       }
       
       if (!user.fcmTokens || user.fcmTokens.length === 0) {
         console.warn(`⚠️ No FCM tokens for user: ${userId} (${user.email})`);
-        return;
+        return false;
       }
 
       console.log(`📱 Found ${user.fcmTokens.length} tokens for user ${userId}`);
@@ -357,9 +372,9 @@ class NotificationService {
           body,
         },
         data: {
-          ...stringifyMetadata(data.metadata || {}),
-          taskId: data.taskId || "",
-          type: data.type || "INFO",
+          ...stringifyMetadata(data?.metadata || {}),
+          taskId: data?.taskId || "",
+          type: data?.type || "INFO",
           click_action: "FLUTTER_NOTIFICATION_CLICK" 
         },
         tokens: user.fcmTokens,
@@ -396,14 +411,30 @@ class NotificationService {
                     });
                 }
              }
+             
+             // Return true if at least one notification was sent successfully
+             return response.successCount > 0;
           } else {
               console.error("❌ Messaging service not available (import failed or null)");
+              return false;
           }
-      } catch (importError) {
-          console.error("❌ Error importing/using Firebase messaging:", importError);
+      } catch (importError: any) {
+          // Check if it's a network error (common when offline or DNS issues)
+          const isNetworkError = importError?.code === 'messaging/app/network-error' || 
+                                 importError?.errorInfo?.code === 'messaging/app/network-error' ||
+                                 importError?.message?.includes('ENOTFOUND') ||
+                                 importError?.message?.includes('network');
+          
+          if (isNetworkError) {
+              console.warn(`⚠️ Network error sending FCM push to user ${userId}: ${importError?.errorInfo?.message || importError?.message}. Push notification will be skipped.`);
+          } else {
+              console.error("❌ Error importing/using Firebase messaging:", importError);
+          }
+          return false;
       }
     } catch (error) {
       console.error(`❌ Global error sending push to user ${userId}:`, error);
+      return false;
     }
   }
 

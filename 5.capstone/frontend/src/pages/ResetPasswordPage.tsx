@@ -56,7 +56,7 @@ export const ResetPasswordPage = () => {
             resetToken,
             newPassword: data.newPassword,
           }),
-        }
+        },
       );
 
       const result = await response.json();
@@ -288,6 +288,19 @@ export const ResetPasswordPage = () => {
                 className="w-full flex justify-center py-2 px-4"
               >
                 {isLoading ? <Loader /> : "Reset Password"}
+              </Button>
+            </div>
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  localStorage.removeItem("resetToken");
+                  navigate("/forgot-password");
+                }}
+                className="w-full mt-2"
+              >
+                Cancel
               </Button>
             </div>
           </form>
