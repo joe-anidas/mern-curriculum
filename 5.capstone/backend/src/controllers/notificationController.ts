@@ -10,7 +10,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 export async function getNotifications(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const {
@@ -88,7 +88,7 @@ export async function getNotifications(
 export async function getUnreadCount(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user!;
@@ -113,7 +113,7 @@ export async function getUnreadCount(
 export async function markAsRead(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { notificationIds } = req.body;
@@ -129,7 +129,7 @@ export async function markAsRead(
 
     const count = await Notification.markAsRead(
       new mongoose.Types.ObjectId(actor.userId),
-      notificationIds
+      notificationIds,
     );
 
     res.json({
@@ -148,7 +148,7 @@ export async function markAsRead(
 export async function markAllAsRead(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user!;
@@ -157,7 +157,7 @@ export async function markAllAsRead(
         userId: new mongoose.Types.ObjectId(actor.userId),
         isRead: false,
       },
-      { $set: { isRead: true } }
+      { $set: { isRead: true } },
     );
 
     res.json({
@@ -176,10 +176,10 @@ export async function markAllAsRead(
 export async function deleteNotification(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const actor = req.user!;
 
     const notification = await Notification.findOneAndDelete({
@@ -210,7 +210,7 @@ export async function deleteNotification(
 export async function deleteAllRead(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const actor = req.user!;
@@ -235,25 +235,29 @@ export async function deleteAllRead(
 export async function registerFcmToken(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { token } = req.body;
     const actor = req.user!;
 
     if (!token) {
-       console.warn(`[FCM] Token missing in registration request from user ${actor.userId}`);
-       return res.status(400).json({
-         success: false,
-         error: "Validation error",
-         message: "Token is required",
-       });
+      console.warn(
+        `[FCM] Token missing in registration request from user ${actor.userId}`,
+      );
+      return res.status(400).json({
+        success: false,
+        error: "Validation error",
+        message: "Token is required",
+      });
     }
 
-    console.log(`[FCM] Registering token for user ${actor.userId}: ${token.substring(0, 10)}... (Length: ${token.length})`);
+    console.log(
+      `[FCM] Registering token for user ${actor.userId}: ${token.substring(0, 10)}... (Length: ${token.length})`,
+    );
 
     await User.findByIdAndUpdate(actor.userId, {
-      $addToSet: { fcmTokens: token }
+      $addToSet: { fcmTokens: token },
     });
 
     res.json({

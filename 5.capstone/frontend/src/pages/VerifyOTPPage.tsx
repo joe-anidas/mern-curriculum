@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button, Loader, ErrorMessage } from "@/components";
 import { Navbar } from "@/components/common";
+import { API_BASE_URL } from "@/config/api";
 
 interface VerifyOTPFormData {
   otp: string;
@@ -41,9 +42,7 @@ export const VerifyOTPPage = () => {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.BACKEND_API_URL || "http://localhost:3000"
-        }/api/auth/verify-otp`,
+        `${API_BASE_URL}/api/auth/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

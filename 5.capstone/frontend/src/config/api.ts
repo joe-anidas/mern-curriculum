@@ -2,11 +2,11 @@
  * API Configuration
  */
 export const API_BASE_URL =
-  import.meta.env.BACKEND_API_URL || "http://localhost:3000";
+  import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3000";
 
-if (!API_BASE_URL) {
+if (!import.meta.env.VITE_BACKEND_API_URL) {
   console.error(
-    "BACKEND_API_URL is not set; defaulting to http://localhost:3000"
+    "VITE_BACKEND_API_URL is not set; defaulting to http://localhost:3000",
   );
 }
 

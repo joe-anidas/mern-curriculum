@@ -80,7 +80,8 @@ export function useNotifications() {
     
     // Listen for FCM foreground messages
     onMessageListener()
-      .then((payload: unknown) => {
+      .then((payload: unknown | null) => {
+         if (!payload) return;
          const { title, body } = (payload as { notification?: { title: string; body: string } })?.notification || {};
          if (title) {
             toast(title, { description: body });

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button, Loader, ErrorMessage } from "@/components";
 import { Navbar } from "@/components/common";
+import { API_BASE_URL } from "@/config/api";
 
 interface ResetPasswordFormData {
   newPassword: string;
@@ -46,9 +47,7 @@ export const ResetPasswordPage = () => {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.BACKEND_API_URL || "http://localhost:3000"
-        }/api/auth/reset-password`,
+        `${API_BASE_URL}/api/auth/reset-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

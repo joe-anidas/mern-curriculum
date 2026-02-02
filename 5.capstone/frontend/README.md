@@ -32,7 +32,7 @@ npm install
 Create a `.env` file in the frontend directory:
 
 ```env
-BACKEND_API_URL=http://localhost:3000
+VITE_BACKEND_API_URL=http://localhost:3000
 ```
 
 ### Development

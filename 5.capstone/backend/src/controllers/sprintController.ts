@@ -56,7 +56,7 @@ export async function getSprint(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const actor = req.user!;
 
     if (!isValidObjectId(id)) {
@@ -222,7 +222,7 @@ export async function updateSprint(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { name, startDate, endDate, status } = req.body as {
       name?: string;
       startDate?: string;
@@ -336,7 +336,7 @@ export async function deleteSprint(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const actor = req.user!;
 
     // Only tenant admins and superadmins can delete sprints

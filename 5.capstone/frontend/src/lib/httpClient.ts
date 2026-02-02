@@ -2,7 +2,6 @@
  * HTTP Client with interceptors and retry logic
  */
 
-import { useAuthStore } from "@/store/authStore";
 import {
   APIError,
   UnauthorizedError,
@@ -10,6 +9,8 @@ import {
   ValidationError,
   type APIErrorResponse,
 } from "@/types/errors";
+import { useAuthStore } from "@/store/authStore";
+import { API_BASE_URL } from "@/config/api";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // ms
@@ -110,7 +111,7 @@ class HTTPClient {
 
   async request<T = unknown>(
     endpoint: string,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
   ): Promise<T> {
     const {
       retries = MAX_RETRIES,
@@ -130,7 +131,7 @@ class HTTPClient {
 
     // Only set JSON content type if it's not FormData
     if (!(fetchOptions.body instanceof FormData)) {
-        headers.set("Content-Type", "application/json");
+      headers.set("Content-Type", "application/json");
     }
 
     // Add auth token if not skipped
@@ -174,33 +175,41 @@ class HTTPClient {
   post<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     const isFormData = data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: "POST",
-      body: isFormData ? (data as BodyInit) : (data ? JSON.stringify(data) : undefined),
+      body: isFormData
+        ? (data as BodyInit)
+        : data
+          ? JSON.stringify(data)
+          : undefined,
     });
   }
 
   put<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     const isFormData = data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: "PUT",
-      body: isFormData ? (data as BodyInit) : (data ? JSON.stringify(data) : undefined),
+      body: isFormData
+        ? (data as BodyInit)
+        : data
+          ? JSON.stringify(data)
+          : undefined,
     });
   }
 
   patch<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -218,5 +227,5 @@ class HTTPClient {
 }
 
 export const httpClient = new HTTPClient(
-  import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3000"
+  API_BASE_URL,
 );

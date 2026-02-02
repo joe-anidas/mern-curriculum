@@ -802,7 +802,7 @@ export async function updateUser(
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { name, email, role } = req.body as {
       name?: string;
       email?: string;
@@ -911,7 +911,7 @@ export async function deleteUser(
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     if (!isValidObjectId(id)) {
       return res

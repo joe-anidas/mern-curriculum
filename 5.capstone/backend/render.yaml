@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: taskflow
+    buildCommand: npm install && npm run build
+    startCommand: npm start

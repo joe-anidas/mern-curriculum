@@ -25,10 +25,26 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:4173",
   "http://localhost:5174",
   "http://127.0.0.1:5174",
+  "https://taskflow-frontend-snowy.vercel.app",
+  "https://taskflow.joeanidas.dev",
   ...CORS_ORIGIN,
 ]);
 
 const allowedOriginsArray = Array.from(allowedOrigins);
+const vercelPreviewOriginRegex =
+  /^https:\/\/.+-joe-anidas\.vercel\.app$/i;
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  // Non-browser clients (curl, server-to-server) often send no Origin header.
+  if (!origin) return true;
+
+  if (allowedOrigins.has(origin)) return true;
+
+  // Allow Vercel preview URLs for this account.
+  if (vercelPreviewOriginRegex.test(origin)) return true;
+
+  return false;
+}
 
 // ========================================
 // BASIC MIDDLEWARE
@@ -37,8 +53,12 @@ const allowedOriginsArray = Array.from(allowedOrigins);
 // Basic CORS
 app.use(
   cors({
-    origin: allowedOriginsArray,
+    origin: (origin, callback) => {
+      callback(null, isAllowedOrigin(origin));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 

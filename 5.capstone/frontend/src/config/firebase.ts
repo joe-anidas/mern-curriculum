@@ -1,7 +1,13 @@
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+type FirebaseWebConfig = {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+};
 
-const firebaseConfig = {
+const firebaseConfig: FirebaseWebConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -10,47 +16,80 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-export const messaging = getMessaging(app);
+function getMissingFirebaseConfigKeys(config: FirebaseWebConfig): string[] {
+  const required: Array<keyof FirebaseWebConfig> = [
+    "apiKey",
+    "authDomain",
+    "projectId",
+    "messagingSenderId",
+    "appId",
+  ];
+  return required.filter((k) => !config[k]);
+}
 
-export const requestForToken = async () => {
+async function getMessagingInstance() {
+  // Avoid crashing the whole app if Firebase isn't configured in a given env.
+  const missing = getMissingFirebaseConfigKeys(firebaseConfig);
+  if (missing.length > 0) return null;
+
+  if (typeof window === "undefined") return null;
+
+  // Dynamic imports ensure Firebase code isn't evaluated unless needed.
+  const { initializeApp, getApp, getApps } = await import("firebase/app");
+  const { getMessaging, isSupported } = await import("firebase/messaging");
+
+  const supported = await isSupported().catch(() => false);
+  if (!supported) return null;
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  return getMessaging(app);
+}
+
+export const requestForToken = async (): Promise<string | null> => {
   try {
-    if ("serviceWorker" in navigator) {
-      const params = new URLSearchParams({
-        apiKey: firebaseConfig.apiKey,
-        authDomain: firebaseConfig.authDomain,
-        projectId: firebaseConfig.projectId,
-        storageBucket: firebaseConfig.storageBucket,
-        messagingSenderId: firebaseConfig.messagingSenderId,
-        appId: firebaseConfig.appId,
-      });
+    const messaging = await getMessagingInstance();
+    if (!messaging) return null;
 
-      const registration = await navigator.serviceWorker.register(
-        `/firebase-messaging-sw.js?${params.toString()}`
-      );
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as
+      | string
+      | undefined;
+    if (!vapidKey) return null;
 
-      const currentToken = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-        serviceWorkerRegistration: registration,
-      });
+    if (!("serviceWorker" in navigator)) return null;
 
-      if (currentToken) {
-        return currentToken;
-      } else {
-        console.log("No registration token available. Request permission to generate one.");
-        return null;
-      }
-    }
-    return null;
+    const params = new URLSearchParams({
+      apiKey: firebaseConfig.apiKey!,
+      authDomain: firebaseConfig.authDomain!,
+      projectId: firebaseConfig.projectId!,
+      storageBucket: firebaseConfig.storageBucket ?? "",
+      messagingSenderId: firebaseConfig.messagingSenderId!,
+      appId: firebaseConfig.appId!,
+    });
+
+    const registration = await navigator.serviceWorker.register(
+      `/firebase-messaging-sw.js?${params.toString()}`,
+    );
+
+    const { getToken } = await import("firebase/messaging");
+    const currentToken = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+
+    return currentToken || null;
   } catch (err) {
-    console.log("An error occurred while retrieving token. ", err);
+    // Silent fail (missing config, denied permission, unsupported browser, etc.)
+    console.warn("FCM token retrieval failed:", err);
     return null;
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      resolve(payload);
-    });
+export const onMessageListener = async (): Promise<unknown | null> => {
+  const messaging = await getMessagingInstance();
+  if (!messaging) return null;
+
+  const { onMessage } = await import("firebase/messaging");
+  return await new Promise((resolve) => {
+    onMessage(messaging, (payload) => resolve(payload));
   });
+};

@@ -23,12 +23,12 @@ export default defineConfig({
         drop_console: true,
         drop_debugger: true,
         pure_funcs: ["console.log", "console.info", "console.debug"],
-        passes: 3,
-        toplevel: true,
+        passes: 2,
+        toplevel: false,
         ecma: 2020,
       },
       mangle: {
-        toplevel: true,
+        toplevel: false,
         safari10: true,
       },
       format: {
@@ -39,22 +39,24 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            if (id.includes("react")) {
-              return "react";
-            }
-            if (id.includes("react-router")) {
-              return "react-router";
-            }
-            if (id.includes("react-hook-form")) {
-              return "forms";
-            }
-            if (id.includes("@tanstack/react-query")) {
-              return "query";
-            }
-            if (id.includes("zustand")) {
-              return "state";
-            }
-            return "vendor";
+            const parts = id.split("node_modules/")[1].split("/");
+            const pkg = parts[0].startsWith("@")
+              ? `${parts[0]}/${parts[1]}`
+              : parts[0];
+
+            // Group core React packages together
+            if (pkg === "react" || pkg === "react-dom") return "react";
+            if (pkg === "react-router-dom") return "react-router";
+            if (pkg === "react-hook-form") return "forms";
+            if (pkg === "@tanstack/react-query") return "query";
+            if (pkg === "zustand") return "state";
+            if (pkg === "recharts") return "charts";
+            if (pkg === "framer-motion") return "motion";
+            if (pkg === "firebase") return "firebase";
+            if (pkg === "socket.io-client") return "socket";
+
+            // Otherwise, create a package-specific chunk name (scoped packages normalized)
+            return pkg.replace("/", "-");
           }
         },
         chunkFileNames: "assets/[name]-[hash].js",
@@ -62,7 +64,8 @@ export default defineConfig({
         assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
-    chunkSizeWarningLimit: 400,
+    // Increase the warning threshold and let manualChunks split large vendor bundles
+    chunkSizeWarningLimit: 700,
     reportCompressedSize: true,
     sourcemap: false,
     cssMinify: true,

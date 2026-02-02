@@ -125,7 +125,7 @@ export async function getTask(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const actor = req.user!;
     const filters: any = { _id: id };
 
@@ -388,7 +388,7 @@ export async function updateTask(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const {
       title,
       description,
@@ -501,7 +501,11 @@ export async function updateTask(
     }
 
     // 4. Update Assignee (Only for Admins)
-    if (newAssigneeId !== undefined && newAssigneeId !== null && newAssigneeId !== "") {
+    if (
+      newAssigneeId !== undefined &&
+      newAssigneeId !== null &&
+      newAssigneeId !== ""
+    ) {
       if (actor.role === "user") {
         return res.status(403).json({
           success: false,
@@ -618,9 +622,9 @@ export async function updateTask(
             message,
             taskId: task._id.toString(),
             triggeredBy: actor.userId,
-            metadata: { 
-              oldDueDate: oldDueDate ? oldDueDate.toISOString() : '', 
-              newDueDate: task.dueDate ? task.dueDate.toISOString() : '' 
+            metadata: {
+              oldDueDate: oldDueDate ? oldDueDate.toISOString() : "",
+              newDueDate: task.dueDate ? task.dueDate.toISOString() : "",
             },
           }),
         );
@@ -641,9 +645,9 @@ export async function updateTask(
             message,
             taskId: task._id.toString(),
             triggeredBy: actor.userId,
-            metadata: { 
-              oldDueDate: oldDueDate ? oldDueDate.toISOString() : '', 
-              newDueDate: task.dueDate ? task.dueDate.toISOString() : '' 
+            metadata: {
+              oldDueDate: oldDueDate ? oldDueDate.toISOString() : "",
+              newDueDate: task.dueDate ? task.dueDate.toISOString() : "",
             },
           }),
         );
@@ -722,7 +726,7 @@ export async function deleteTask(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     const actor = req.user!;
 
@@ -782,7 +786,7 @@ export async function addAttachments(
   next: NextFunction,
 ) {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const files = req.files as Express.Multer.File[];
     const actor = req.user!;
 
@@ -863,7 +867,10 @@ export async function removeAttachment(
   next: NextFunction,
 ) {
   try {
-    const { id, attachmentId } = req.params;
+    const { id, attachmentId } = req.params as {
+      id: string;
+      attachmentId: string;
+    };
     const actor = req.user!;
 
     if (!isValidObjectId(id)) {

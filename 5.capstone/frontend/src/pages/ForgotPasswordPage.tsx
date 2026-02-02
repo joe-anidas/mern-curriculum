@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useAuthStore } from "@/store";
 import { Button, Loader, ErrorMessage } from "@/components";
 import { Navbar } from "@/components/common";
+import { API_BASE_URL } from "@/config/api";
 
 interface ForgotPasswordFormData {
   email: string;
@@ -33,9 +34,7 @@ export const ForgotPasswordPage = () => {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.BACKEND_API_URL || "http://localhost:3000"
-        }/api/auth/forgot-password`,
+        `${API_BASE_URL}/api/auth/forgot-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
